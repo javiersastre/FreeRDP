@@ -252,7 +252,13 @@ static BOOL CreateProcessExA(HANDLE hToken, WINPR_ATTR_UNUSED DWORD dwLogonFlags
 	sigfillset(&newSigMask);
 	restoreSigMask = !pthread_sigmask(SIG_SETMASK, &newSigMask, &oldSigMask);
 	/* fork and exec */
+#if defined(TARGET_OS_TV) && (TARGET_OS_TV == 1)
+	/* tvOS marks fork() and execve() unavailable: no process can be created */
+	SetLastError(ERROR_NOT_SUPPORTED);
+	pid = -1;
+#else
 	pid = fork();
+#endif
 
 	if (pid < 0)
 	{
@@ -423,7 +429,9 @@ static BOOL CreateProcessExA(HANDLE hToken, WINPR_ATTR_UNUSED DWORD dwLogonFlags
 				goto finish;
 		}
 
+#if !defined(TARGET_OS_TV) || (TARGET_OS_TV == 0)
 		if (execve(filename, pArgs, envp) < 0)
+#endif
 		{
 			/* execve failed - end the process */
 			_exit(1);
